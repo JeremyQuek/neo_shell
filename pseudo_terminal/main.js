@@ -33,7 +33,17 @@ function startShell(cols, rows) {
     cols,
     rows,
     cwd: os.homedir(),
-    env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" },
+    env: {
+      ...process.env,
+      TERM: "xterm-256color",
+      COLORTERM: "truecolor",
+      // Don't inherit Terminal.app's identity, or /etc/zshrc_Apple_Terminal
+      // redirects history into per-session files under ZDOTDIR
+      TERM_PROGRAM: "NASH",
+      SHELL_SESSIONS_DISABLE: "1",
+      // NASH-only rc files: load ~/.z* then apply the green theme on top
+      ZDOTDIR: path.join(__dirname, "zsh"),
+    },
   });
 
   shellProc.onData((data) => {

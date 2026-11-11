@@ -40,3 +40,6 @@ out/
 # Dependency locks (Optional: some prefer to keep these)
 # package-lock.json
 # yarn.lock
+# NASH zsh runtime files (ZDOTDIR caches)
+pseudo_terminal/zsh/.zcompdump*
+pseudo_terminal/zsh/.zsh_sessions/
