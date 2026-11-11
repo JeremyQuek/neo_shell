@@ -45,4 +45,4 @@ if ! command -v node &>/dev/null; then
     exit 1
 fi
 
-echo -e "\n${GREEN}🚀 All systems go! You are ready to run shell.sh.${NC}"
+echo -e "\n${GREEN}🚀 All systems go! You are ready to run run.sh or build.sh.${NC}"

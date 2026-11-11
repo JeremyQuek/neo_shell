@@ -11,10 +11,10 @@ const SHELL_BIN: &str = "/bin/zsh";
 
 // NASH-only rc files, baked into the binary so the .app needs no loose files
 const ZSH_RC: [(&str, &str); 4] = [
-    (".zshenv", include_str!("../../zsh/.zshenv")),
-    (".zprofile", include_str!("../../zsh/.zprofile")),
-    (".zshrc", include_str!("../../zsh/.zshrc")),
-    (".zlogin", include_str!("../../zsh/.zlogin")),
+    (".zshenv", include_str!("../theme/.zshenv")),
+    (".zprofile", include_str!("../theme/.zprofile")),
+    (".zshrc", include_str!("../theme/.zshrc")),
+    (".zlogin", include_str!("../theme/.zlogin")),
 ];
 
 struct Pty {

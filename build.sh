@@ -13,17 +13,20 @@ if ! command -v cargo &>/dev/null; then
     exit 1
 fi
 
+if ! xcode-select -p &>/dev/null; then
+    echo "Error: Xcode Command Line Tools not found. Run: xcode-select --install"
+    exit 1
+fi
+
 cd "$(dirname "$0")/pseudo_terminal" || exit
 
-# xterm.js + Tauri CLI; only needed the first time (or after package.json changes)
-if [ ! -d node_modules ]; then
-    npm i -s || exit 1
-fi
+# xterm.js + Tauri CLI; a quick no-op when nothing in package.json changed
+npm i -s || exit 1
 
 echo "Building NASH.app..."
 npm run build || exit 1
 
-APP="$PWD/src-tauri/target/release/bundle/macos/NASH.app"
+APP="$PWD/main/target/release/bundle/macos/NASH.app"
 echo ""
 echo "Built: $APP"
 
