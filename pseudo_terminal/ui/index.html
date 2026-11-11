@@ -22,10 +22,11 @@
                 will-change: transform;
             }
 
+            /* 20px border made with inset, not padding: the fit addon counts
+               this box's padding as usable space and would overshoot by a row */
             #terminal {
-                height: 100vh;
-                padding: 20px;
-                box-sizing: border-box;
+                position: fixed;
+                inset: 20px;
                 will-change: transform;
             }
 
@@ -120,6 +121,25 @@
             const canvas = document.getElementById("matrix-canvas");
             const ctx = canvas.getContext("2d");
 
+            const letters = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ1234567890".split("");
+            const fontSize = 16;
+
+            // Every character drawn once into an off-screen sprite sheet, one
+            // cell each. Frames then copy pixels out of it instead of laying
+            // out and rasterising text ~100 times a frame.
+            const sheet = document.createElement("canvas");
+            const cellW = fontSize;
+            const cellH = Math.ceil(fontSize * 1.25); // room below the baseline
+            function buildSheet(dpr) {
+                sheet.width = letters.length * cellW * dpr;
+                sheet.height = cellH * dpr;
+                const g = sheet.getContext("2d");
+                g.setTransform(dpr, 0, 0, dpr, 0, 0);
+                g.font = fontSize + "px arial";
+                g.fillStyle = "#38E057";
+                letters.forEach((ch, i) => g.fillText(ch, i * cellW, fontSize));
+            }
+
             // Draw at the screen's real pixel density so Retina stays sharp,
             // while the rain code keeps working in CSS pixels
             function initCanvas() {
@@ -129,25 +149,26 @@
                 canvas.style.width = window.innerWidth + "px";
                 canvas.style.height = window.innerHeight + "px";
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                buildSheet(dpr);
             }
             window.addEventListener("resize", initCanvas);
             initCanvas();
 
-            const letters = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ1234567890".split("");
-            const fontSize = 16;
             const columns = window.innerWidth / fontSize;
             const drops = Array(Math.floor(columns)).fill(1);
 
             function drawRain() {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
                 ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-                ctx.font = fontSize + "px arial";
+                const sw = cellW * (sheet.width / (letters.length * cellW));
 
                 drops.forEach((y, i) => {
-                    const text =
-                        letters[Math.floor(Math.random() * letters.length)];
-                    ctx.fillStyle = "#38E057";
-                    ctx.fillText(text, i * fontSize, y * fontSize);
+                    const n = Math.floor(Math.random() * letters.length);
+                    // Same spot fillText used: the cell's baseline sits at y
+                    ctx.drawImage(
+                        sheet, n * sw, 0, sw, sheet.height,
+                        i * fontSize, y * fontSize - fontSize, cellW, cellH,
+                    );
 
                     if (y * fontSize > window.innerHeight && Math.random() > 0.975) {
                         drops[i] = 0;
@@ -159,13 +180,25 @@
             // instead of on a free-running timer that drops frames
             let lastStep = 0;
             function tick(now) {
+                if (!raining) return;
                 if (now - lastStep >= 33) {
                     lastStep = now;
                     drawRain();
                 }
                 requestAnimationFrame(tick);
             }
-            requestAnimationFrame(tick);
+
+            // Rain only falls in the focused window; the rest freeze and
+            // cost nothing until you click back in
+            let raining = false;
+            function startRain() {
+                if (raining) return;
+                raining = true;
+                requestAnimationFrame(tick);
+            }
+            window.addEventListener("focus", startRain);
+            window.addEventListener("blur", () => (raining = false));
+            startRain();
         </script>
     </body>
 </html>
