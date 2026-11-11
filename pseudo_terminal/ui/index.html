@@ -117,72 +117,174 @@
                 invoke("terminal_ready", { cols: term.cols, rows: term.rows });
             });
 
-            // --- Matrix Rain Effect ---
+            // --- Matrix Rain Effect (WebGL) ---
+            // The CPU only tracks where each column's drop is (~100 numbers,
+            // 30 times a second). The GPU works out every pixel: how many
+            // steps ago the drop passed that cell sets its brightness, the
+            // same 8%-per-step fade the old full-screen fillRect painted.
             const canvas = document.getElementById("matrix-canvas");
-            const ctx = canvas.getContext("2d");
+            const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
 
             const letters = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ1234567890".split("");
             const fontSize = 16;
 
-            // Every character drawn once into an off-screen sprite sheet, one
-            // cell each. Frames then copy pixels out of it instead of laying
-            // out and rasterising text ~100 times a frame.
+            // Every character drawn once into a sprite sheet, uploaded to the
+            // GPU as the letter texture
             const sheet = document.createElement("canvas");
-            const cellW = fontSize;
-            const cellH = Math.ceil(fontSize * 1.25); // room below the baseline
             function buildSheet(dpr) {
-                sheet.width = letters.length * cellW * dpr;
-                sheet.height = cellH * dpr;
+                sheet.width = letters.length * fontSize * dpr;
+                sheet.height = fontSize * dpr;
                 const g = sheet.getContext("2d");
                 g.setTransform(dpr, 0, 0, dpr, 0, 0);
                 g.font = fontSize + "px arial";
-                g.fillStyle = "#38E057";
-                letters.forEach((ch, i) => g.fillText(ch, i * cellW, fontSize));
+                g.fillStyle = "#fff";
+                // Baseline a little above the cell bottom, as fillText placed it
+                letters.forEach((ch, i) => g.fillText(ch, i * fontSize, fontSize - 2));
             }
 
-            // Draw at the screen's real pixel density so Retina stays sharp,
-            // while the rain code keeps working in CSS pixels
+            const VERT = `#version 300 es
+                void main() {
+                    // One triangle that covers the whole screen
+                    vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+                    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+                }`;
+            const FRAG = `#version 300 es
+                precision highp float;
+                precision highp int;
+                uniform sampler2D letterTex;
+                uniform sampler2D drops;   // per column: head row, last pass length, pass number
+                uniform float dpr, cell, viewH;
+                uniform int glyphCount;
+                out vec4 color;
+
+                uint hash(uint x) {
+                    x ^= x >> 16; x *= 0x7feb352du;
+                    x ^= x >> 15; x *= 0x846ca68bu;
+                    return x ^ (x >> 16);
+                }
+
+                void main() {
+                    // Pixel -> CSS px (top-left origin) -> grid cell
+                    vec2 px = vec2(gl_FragCoord.x, viewH - gl_FragCoord.y) / dpr;
+                    ivec2 c = ivec2(floor(px / cell));
+                    vec4 d = texelFetch(drops, ivec2(c.x, 0), 0);
+                    float head = d.x, prevLen = d.y, pass = d.z;
+                    float row = float(c.y);
+
+                    // Steps since a drop last lit this cell: this pass if the
+                    // head has reached it, otherwise the previous pass
+                    float age;
+                    if (row <= head) {
+                        age = head - row;
+                    } else if (row <= prevLen) {
+                        age = head + 1.0 + prevLen - row;
+                        pass -= 1.0;
+                    } else {
+                        color = vec4(0.0, 0.0, 0.0, 1.0);
+                        return;
+                    }
+                    float glow = pow(0.92, age);
+
+                    // A random letter per cell, fixed for the pass that drew it
+                    uint h = hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(pass) * 83492791u);
+                    float glyph = float(h % uint(glyphCount));
+                    vec2 inCell = fract(px / cell);
+                    float ink = texture(letterTex, vec2((glyph + inCell.x) / float(glyphCount), inCell.y)).a;
+
+                    color = vec4(vec3(0.2196, 0.8784, 0.3412) * ink * glow, 1.0);
+                }`;
+
+            function compile(type, src) {
+                const sh = gl.createShader(type);
+                gl.shaderSource(sh, src);
+                gl.compileShader(sh);
+                if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(sh);
+                return sh;
+            }
+            const prog = gl.createProgram();
+            gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+            gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+            gl.bindVertexArray(gl.createVertexArray());
+            const u = (name) => gl.getUniformLocation(prog, name);
+            gl.uniform1i(u("letterTex"), 0);
+            gl.uniform1i(u("drops"), 1);
+            gl.uniform1f(u("cell"), fontSize);
+            gl.uniform1i(u("glyphCount"), letters.length);
+
+            function makeTexture(unit) {
+                const t = gl.createTexture();
+                gl.activeTexture(gl.TEXTURE0 + unit);
+                gl.bindTexture(gl.TEXTURE_2D, t);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                return t;
+            }
+            const letterTex = makeTexture(0);
+            const dropsTex = makeTexture(1);
+
+            // Per column: [head row, last pass length, pass number, unused]
+            let cols = 0;
+            let drops = new Float32Array(0);
+
+            // Draw at the screen's real pixel density so Retina stays sharp
             function initCanvas() {
                 const dpr = window.devicePixelRatio || 1;
                 canvas.width = window.innerWidth * dpr;
                 canvas.height = window.innerHeight * dpr;
                 canvas.style.width = window.innerWidth + "px";
                 canvas.style.height = window.innerHeight + "px";
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.uniform1f(u("dpr"), dpr);
+                gl.uniform1f(u("viewH"), canvas.height);
+
                 buildSheet(dpr);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sheet);
+
+                // Keep existing columns falling; new ones start at the top
+                const next = Math.ceil(window.innerWidth / fontSize);
+                const grown = new Float32Array(next * 4);
+                grown.set(drops.subarray(0, Math.min(drops.length, grown.length)));
+                drops = grown;
+                cols = next;
+                drawRain();
             }
+
+            function stepRain() {
+                const rows = window.innerHeight / fontSize;
+                for (let i = 0; i < cols; i++) {
+                    const d = i * 4;
+                    // Past the bottom: occasionally restart from the top
+                    if (drops[d] > rows && Math.random() > 0.975) {
+                        drops[d + 1] = drops[d];
+                        drops[d] = 0;
+                        drops[d + 2]++;
+                    } else {
+                        drops[d]++;
+                    }
+                }
+            }
+
+            function drawRain() {
+                gl.activeTexture(gl.TEXTURE1);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, cols, 1, 0, gl.RGBA, gl.FLOAT, drops);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+            }
+
             window.addEventListener("resize", initCanvas);
             initCanvas();
 
-            const columns = window.innerWidth / fontSize;
-            const drops = Array(Math.floor(columns)).fill(1);
-
-            function drawRain() {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-                ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-                const sw = cellW * (sheet.width / (letters.length * cellW));
-
-                drops.forEach((y, i) => {
-                    const n = Math.floor(Math.random() * letters.length);
-                    // Same spot fillText used: the cell's baseline sits at y
-                    ctx.drawImage(
-                        sheet, n * sw, 0, sw, sheet.height,
-                        i * fontSize, y * fontSize - fontSize, cellW, cellH,
-                    );
-
-                    if (y * fontSize > window.innerHeight && Math.random() > 0.975) {
-                        drops[i] = 0;
-                    }
-                    drops[i]++;
-                });
-            }
-            // Same 30 steps/s as before, but painted in sync with the display
-            // instead of on a free-running timer that drops frames
+            // Same 30 steps/s as before, painted in sync with the display
             let lastStep = 0;
             function tick(now) {
                 if (!raining) return;
                 if (now - lastStep >= 33) {
                     lastStep = now;
+                    stepRain();
                     drawRain();
                 }
                 requestAnimationFrame(tick);
