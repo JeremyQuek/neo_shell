@@ -95,11 +95,12 @@
 
             // Tauri's bridge to the Rust side (main/src/main.rs)
             const { invoke } = window.__TAURI__.core;
-            const { listen } = window.__TAURI__.event;
+            const thisWindow = window.__TAURI__.webviewWindow.getCurrentWebviewWindow();
 
             // Keystrokes (incl. Ctrl+C, arrows, tab) go straight to the pty
             term.onData((data) => invoke("user_input", { data }));
-            const listening = listen("proc-output", (e) => term.write(e.payload));
+            // Only this window's shell output (each window runs its own zsh)
+            const listening = thisWindow.listen("proc-output", (e) => term.write(e.payload));
 
             // Keep the pty's size in sync with the window
             term.onResize(({ cols, rows }) => invoke("resize", { cols, rows }));
