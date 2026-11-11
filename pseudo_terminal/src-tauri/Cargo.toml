@@ -1,0 +1,14 @@
+[package]
+name = "nash"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.85"
+# Pick dependency versions that build on our rust-version
+resolver = "3"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+portable-pty = "0.9"

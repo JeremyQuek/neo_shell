@@ -25,32 +25,23 @@ if [ ! -x /bin/zsh ]; then
 fi
 echo -e "${GREEN}✅ Shell: zsh found.${NC}"
 
-# 3. Compiler Check (node-pty is a native module built on npm install)
-if ! command -v g++ &>/dev/null; then
-    echo -e "${RED}❌ Error: g++ (Compiler) not found. Please install Xcode Command Line Tools.${NC}"
+# 3. Rust toolchain (Tauri compiles the app's backend)
+if ! command -v cargo &>/dev/null; then
+    echo -e "${RED}❌ Error: Rust (cargo) not found. Install it from https://rustup.rs${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ Compiler: g++ found.${NC}"
+echo -e "${GREEN}✅ Rust: $(cargo --version) found.${NC}"
 
-# 4. Node.js & npm Check
+# 4. Xcode Command Line Tools (linker + macOS SDK for the WebView)
+if ! xcode-select -p &>/dev/null; then
+    echo -e "${RED}❌ Error: Xcode Command Line Tools not found. Run: xcode-select --install${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Xcode tools found.${NC}"
+
+# 5. Node.js & npm Check (xterm.js + the Tauri CLI)
 if ! command -v node &>/dev/null; then
-    echo -e "${RED}❌ Error: Node.js is not installed. (Required for Electron)${NC}"
-    exit 1
-fi
-
-# 5. Architecture Check (Intel vs Apple Silicon)
-# node-pty is compiled for this architecture
-ARCH=$(uname -m)
-echo -e "ℹ️  Architecture detected: $ARCH"
-
-# 6. Build tools for node-pty (node-gyp needs make + python3)
-if ! command -v make &>/dev/null; then
-    echo -e "${RED}❌ Error: 'make' utility not found.${NC}"
-    exit 1
-fi
-
-if ! command -v python3 &>/dev/null; then
-    echo -e "${RED}❌ Error: python3 not found (needed by node-gyp).${NC}"
+    echo -e "${RED}❌ Error: Node.js is not installed. (Required for the Tauri CLI)${NC}"
     exit 1
 fi
 

@@ -1,7 +1,9 @@
 <!doctype html>
 <html>
     <head>
-        <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css" />
+        <!-- Without this WebKit reads the file as Latin-1 and the katakana turn into ï½± -->
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="vendor/xterm.css" />
         <style>
             body {
                 background: black;
@@ -16,12 +18,15 @@
                 left: 0;
                 z-index: -1;
                 opacity: 0.8;
+                /* Own GPU layer, so redrawing the rain doesn't repaint the text */
+                will-change: transform;
             }
 
             #terminal {
                 height: 100vh;
                 padding: 20px;
                 box-sizing: border-box;
+                will-change: transform;
             }
 
             /* Let the rain show through xterm's layers */
@@ -43,8 +48,8 @@
         <canvas id="matrix-canvas"></canvas>
         <div id="terminal"></div>
 
-        <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
-        <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+        <script src="vendor/xterm.js"></script>
+        <script src="vendor/addon-fit.js"></script>
         <script>
             // --- Terminal: xterm.js drawn over the rain, wired to a zsh pty ---
             const term = new Terminal({
@@ -88,43 +93,53 @@
             fitAddon.fit();
             term.focus();
 
+            // Tauri's bridge to the Rust side (src-tauri/src/main.rs)
+            const { invoke } = window.__TAURI__.core;
+            const { listen } = window.__TAURI__.event;
+
             // Keystrokes (incl. Ctrl+C, arrows, tab) go straight to the pty
-            term.onData((data) => window.electronAPI.sendInput(data));
-            window.electronAPI.onOutput((data) => term.write(data));
+            term.onData((data) => invoke("user_input", { data }));
+            const listening = listen("proc-output", (e) => term.write(e.payload));
 
             // Keep the pty's size in sync with the window
-            term.onResize(({ cols, rows }) =>
-                window.electronAPI.resize(cols, rows),
-            );
+            term.onResize(({ cols, rows }) => invoke("resize", { cols, rows }));
             window.addEventListener("resize", () => fitAddon.fit());
             window.addEventListener("click", () => term.focus());
 
-            // Banner first, then start zsh so its prompt lands underneath
-            window.electronAPI.onSetUsername((name) => {
+            // Banner first, then start zsh so its prompt lands underneath.
+            // Wait for the output listener too, or the first prompt is lost.
+            invoke("username").then(async (name) => {
                 term.write("< NASH UPLINK ESTABLISHED >\r\n");
                 term.write(`WAKE UP....${name}\r\n\r\n`);
-                window.electronAPI.ready(term.cols, term.rows);
+                await listening;
+                invoke("terminal_ready", { cols: term.cols, rows: term.rows });
             });
 
             // --- Matrix Rain Effect ---
             const canvas = document.getElementById("matrix-canvas");
             const ctx = canvas.getContext("2d");
 
+            // Draw at the screen's real pixel density so Retina stays sharp,
+            // while the rain code keeps working in CSS pixels
             function initCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = window.innerWidth * dpr;
+                canvas.height = window.innerHeight * dpr;
+                canvas.style.width = window.innerWidth + "px";
+                canvas.style.height = window.innerHeight + "px";
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             }
             window.addEventListener("resize", initCanvas);
             initCanvas();
 
             const letters = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ1234567890".split("");
             const fontSize = 16;
-            const columns = canvas.width / fontSize;
+            const columns = window.innerWidth / fontSize;
             const drops = Array(Math.floor(columns)).fill(1);
 
             function drawRain() {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
                 ctx.font = fontSize + "px arial";
 
                 drops.forEach((y, i) => {
@@ -133,13 +148,23 @@
                     ctx.fillStyle = "#38E057";
                     ctx.fillText(text, i * fontSize, y * fontSize);
 
-                    if (y * fontSize > canvas.height && Math.random() > 0.975) {
+                    if (y * fontSize > window.innerHeight && Math.random() > 0.975) {
                         drops[i] = 0;
                     }
                     drops[i]++;
                 });
             }
-            setInterval(drawRain, 33);
+            // Same 30 steps/s as before, but painted in sync with the display
+            // instead of on a free-running timer that drops frames
+            let lastStep = 0;
+            function tick(now) {
+                if (now - lastStep >= 33) {
+                    lastStep = now;
+                    drawRain();
+                }
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
         </script>
     </body>
 </html>

@@ -43,3 +43,8 @@ out/
 # NASH zsh runtime files (ZDOTDIR caches)
 pseudo_terminal/zsh/.zcompdump*
 pseudo_terminal/zsh/.zsh_sessions/
+
+# --- Tauri ---
+pseudo_terminal/src-tauri/target/
+pseudo_terminal/src-tauri/gen/
+pseudo_terminal/ui/vendor/
