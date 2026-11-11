@@ -23,6 +23,14 @@ cd "$(dirname "$0")/pseudo_terminal" || exit
 # xterm.js + Tauri CLI; a quick no-op when nothing in package.json changed
 npm i -s || exit 1
 
+# tauri build only packs main/icons/, so regenerate them when icon.svg is newer
+if [ main/icon.svg -nt main/icons/icon.icns ]; then
+    echo "Regenerating icons from icon.svg..."
+    npx tauri icon main/icon.svg -o main/icons >/dev/null || exit 1
+    # Keep only the macOS sizes tauri.conf.json uses
+    (cd main/icons && rm -rf android ios Square*.png StoreLogo.png icon.ico 64x64.png)
+fi
+
 echo "Building NASH.app..."
 npm run build || exit 1
 
@@ -30,6 +38,8 @@ APP="$PWD/main/target/release/bundle/macos/NASH.app"
 echo ""
 echo "Built: $APP"
 
+# -n: start a fresh copy even if NASH is already running (plain `open`
+# would just bring the old, already-running version to the front)
 if [ "$1" = "--open" ]; then
-    open "$APP"
+    open -n "$APP"
 fi
