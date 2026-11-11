@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
     <head>
+        <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css" />
         <style>
             body {
                 background: black;
@@ -19,173 +20,72 @@
 
             #terminal {
                 height: 100vh;
-                display: flex;
-                flex-direction: column;
                 padding: 20px;
                 box-sizing: border-box;
-                font-weight: bold;
             }
 
-            #history {
-                flex-grow: 1;
-                overflow-y: auto;
-                margin-bottom: 10px;
-                white-space: normal;
-                word-break: break-all;
+            /* Let the rain show through xterm's layers */
+            #terminal .xterm,
+            #terminal .xterm-viewport,
+            #terminal .xterm-screen {
+                background-color: transparent !important;
             }
 
-            /* The Hidden Input Container */
-            .input-line {
-                display: flex;
-                align-items: center;
-                opacity: 0; /* Keep it functional but invisible */
-                position: absolute;
-                left: -9999px;
-            }
-
-            .loading-box {
-                display: inline-block;
-                width: 10px;
-                height: 1.2em;
-                background-color: #0f0;
-                margin-left: 2px;
-                animation: blink 0.8s infinite;
-                vertical-align: middle;
-            }
-
-            @keyframes blink {
-                0%,
-                100% {
-                    opacity: 1;
-                }
-                50% {
-                    opacity: 0;
-                }
-            }
-
-            #history::-webkit-scrollbar {
+            #terminal .xterm-viewport::-webkit-scrollbar {
                 width: 5px;
             }
-            #history::-webkit-scrollbar-thumb {
+            #terminal .xterm-viewport::-webkit-scrollbar-thumb {
                 background: #050;
             }
         </style>
     </head>
     <body>
         <canvas id="matrix-canvas"></canvas>
-        <div id="terminal">
-            <div id="history">
-                <div>< NASH UPLINK ESTABLISHED ></div>
-                <div id="welcome-msg">WAKING UP...</div>
-            </div>
-            <div class="input-line">
-                <input type="text" id="user-in" autofocus />
-            </div>
-        </div>
+        <div id="terminal"></div>
 
+        <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
+        <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
         <script>
-            const history = document.getElementById("history");
-            const input = document.getElementById("user-in");
-
-            // --- HELPER: Create the "Waiting" Prompt ---
-            function createActivePrompt(isShell = false) {
-                // 1. Check for existing prompts to avoid duplicates
-                if (document.getElementById("active-cursor")) return;
-
-                const line = document.createElement("div");
-                line.className = "prompt-line";
-
-                if (isShell) {
-                    // Shell/System is "thinking" - No prompt character, just the block
-                    line.innerHTML =
-                        '<span id="mirror-text"></span><span class="loading-box" id="active-cursor"></span>';
-                } else {
-                    // Standard User Input - Includes the ">" and the mirror span for typing
-                    line.innerHTML =
-                        '> <span id="mirror-text"></span><span class="loading-box" id="active-cursor"></span>';
-                }
-
-                history.appendChild(line);
-                history.scrollTop = history.scrollHeight;
-            }
-
-            // --- MIRROR LOGIC: Show typing in real-time ---
-            input.addEventListener("input", () => {
-                const mirror = document.getElementById("mirror-text");
-                if (mirror) {
-                    mirror.textContent = input.value;
-                    history.scrollTop = history.scrollHeight;
-                }
+            // --- Terminal: xterm.js drawn over the rain, wired to a zsh pty ---
+            const term = new Terminal({
+                allowTransparency: true,
+                cursorBlink: true,
+                cursorStyle: "block",
+                fontFamily: '"Courier New", monospace',
+                fontWeight: "bold",
+                fontWeightBold: "bold",
+                fontSize: 14,
+                scrollback: 5000,
+                theme: {
+                    background: "#00000000",
+                    foreground: "#38E057",
+                    cursor: "#38E057",
+                    cursorAccent: "#000000",
+                    selectionBackground: "#38E05755",
+                },
             });
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById("terminal"));
+            fitAddon.fit();
+            term.focus();
 
-            // Keep focus on the hidden input at all times
-            window.addEventListener("click", () => input.focus());
+            // Keystrokes (incl. Ctrl+C, arrows, tab) go straight to the pty
+            term.onData((data) => window.electronAPI.sendInput(data));
+            window.electronAPI.onOutput((data) => term.write(data));
 
-            // 1. Username Sync
+            // Keep the pty's size in sync with the window
+            term.onResize(({ cols, rows }) =>
+                window.electronAPI.resize(cols, rows),
+            );
+            window.addEventListener("resize", () => fitAddon.fit());
+            window.addEventListener("click", () => term.focus());
+
+            // Banner first, then start zsh so its prompt lands underneath
             window.electronAPI.onSetUsername((name) => {
-                const welcome = document.getElementById("welcome-msg");
-                if (welcome) {
-                    welcome.textContent = `WAKE UP....${name}`;
-                }
-                createActivePrompt();
-            });
-
-            // 2. Clear Screen
-            window.electronAPI.onClear(() => {
-                history.innerHTML = "<div>< NASH UPLINK ESTABLISHED ></div>";
-                input.disabled = false;
-                input.value = "";
-                createActivePrompt();
-                input.focus();
-            });
-
-            // --- 3. Handle Process Output (From C Binary) ---
-            window.electronAPI.onOutput((data) => {
-                // 1. Remove any temporary "waiting" cursor before posting real output
-                const activeCursor = document.getElementById("active-cursor");
-                if (activeCursor) {
-                    activeCursor.parentElement.remove();
-                }
-
-                const line = document.createElement("div");
-                line.textContent = data.trim();
-                history.appendChild(line);
-
-                // 2. Now create the actual interactive prompt for the next command
-                createActivePrompt();
-
-                input.disabled = false;
-                input.focus();
-                history.scrollTop = history.scrollHeight;
-            });
-
-            // --- 4. Handle User Input (Enter Key) ---
-            input.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    const cmd = input.value;
-
-                    // Clean up current prompt (solidify text, remove cursor)
-                    const mirror = document.getElementById("mirror-text");
-                    const cursor = document.getElementById("active-cursor");
-
-                    if (mirror) {
-                        mirror.removeAttribute("id");
-                        if (cursor) cursor.remove();
-                    }
-
-                    if (cmd.trim() !== "") {
-                        // input.disabled = true;
-                        window.electronAPI.sendInput(cmd);
-
-                        // --- THE ADDITION ---
-                        // Create a "dummy" prompt line so the cursor blinks while waiting
-                        createActivePrompt(true);
-                    } else {
-                        createActivePrompt();
-                    }
-
-                    input.value = "";
-                }
+                term.write("< NASH UPLINK ESTABLISHED >\r\n");
+                term.write(`WAKE UP....${name}\r\n\r\n`);
+                window.electronAPI.ready(term.cols, term.rows);
             });
 
             // --- Matrix Rain Effect ---
@@ -222,9 +122,6 @@
                 });
             }
             setInterval(drawRain, 33);
-
-            // Initial prompt startup
-            createActivePrompt();
         </script>
     </body>
 </html>

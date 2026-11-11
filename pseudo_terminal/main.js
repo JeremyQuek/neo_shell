@@ -1,22 +1,17 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
-const { spawn } = require("child_process");
+const pty = require("node-pty");
 const path = require("path");
+const os = require("os");
 
 let mainWindow;
 let shellProc;
-let shellBin = "../src/shell/shell";
-
-const os = require("os"); 
-
-//tdl:
-// Display current directory
-// Make the shell wait until parent completes
-// allow continuous writes to cout
+let shellBin = "/bin/zsh";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 600,
+    backgroundColor: "#000000",
     webPreferences: { preload: path.join(__dirname, "preload.js") },
   });
 
@@ -27,61 +22,55 @@ function createWindow() {
     const userName = os.userInfo().username.toUpperCase();
     mainWindow.webContents.send("set-username", userName);
   });
+}
 
-  // Start your binary
-  //todo fix shell env path
-  shellProc = spawn(shellBin);
-
-  shellProc.stdout.on("data", (data) => {
-    mainWindow.webContents.send("proc-output", data.toString());
+// Run zsh inside a real pseudo-terminal, so signals (Ctrl+C), password
+// prompts and full-screen apps (htop, vim) behave like a normal terminal.
+// Started only once xterm.js is up, so the first prompt isn't dropped.
+function startShell(cols, rows) {
+  shellProc = pty.spawn(shellBin, ["-l"], {
+    name: "xterm-256color",
+    cols,
+    rows,
+    cwd: os.homedir(),
+    env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" },
   });
 
-  
-  shellProc.stderr.on("data", (data) => {
-    // We send it to the same "proc-output" channel so it shows up in your terminal UI
-    mainWindow.webContents.send("proc-output", data.toString());
+  shellProc.onData((data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("proc-output", data);
+    }
   });
 
-
-
-  // Receive input from the UI and send to the binary
-  ipcMain.on("user-input", (event, input) => {
-    const command = input.trim();
-    const lowerCmd = command.toLowerCase();
-
-    if (lowerCmd === "clear") {
-      mainWindow.webContents.send("clear-screen");
-    }
-    // Example: If you want to handle specific commands and error on others
-    else if (lowerCmd === "exit" || lowerCmd === "quit" || lowerCmd === "q") {
-      app.quit();
-    } else {
-      if (shellProc && !shellProc.killed) {
-        shellProc.stdin.write(input + "\n");
-      }
-    }
+  // Typing `exit` (or Ctrl+D) ends zsh — close the app with it
+  shellProc.onExit(() => {
+    shellProc = null;
+    app.quit();
   });
 }
 
-app.whenReady().then(createWindow);
-
-// 1. Handle the window closing
-app.on("window-all-closed", () => {
-  if (shellProc) {
-    shellProc.stdin.pause(); // Stop accepting input
-    shellProc.kill("SIGTERM"); // Politely ask it to die
-  }
-
-  // On macOS, it's standard to stay active, but for a terminal,
-  // you likely want it to quit entirely:
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+ipcMain.on("terminal-ready", (event, { cols, rows }) => {
+  if (!shellProc) startShell(cols, rows);
+  else shellProc.resize(cols, rows); // page reload: keep the same session
 });
 
-// 2. The absolute final safety net
+// Raw keystrokes from xterm.js go straight to the pty
+ipcMain.on("user-input", (event, data) => {
+  if (shellProc) shellProc.write(data);
+});
+
+ipcMain.on("resize", (event, { cols, rows }) => {
+  if (shellProc && cols > 0 && rows > 0) shellProc.resize(cols, rows);
+});
+
+app.whenReady().then(createWindow);
+
+app.on("window-all-closed", () => {
+  if (shellProc) shellProc.kill();
+  app.quit();
+});
+
+// The absolute final safety net
 app.on("will-quit", () => {
-  if (shellProc) {
-    shellProc.kill("SIGKILL"); // Force kill if it's still hanging
-  }
+  if (shellProc) shellProc.kill("SIGKILL");
 });

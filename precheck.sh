@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-REQUIRED_CPP_VERSION=17
 MIN_NODE_VERSION=14
 
 # Colors for readability
@@ -19,20 +18,19 @@ if [ "$OS_TYPE" != "Darwin" ]; then
 fi
 echo -e "${GREEN}✅ OS: macOS detected.${NC}"
 
-# 2. Compiler Check (g++/clang++)
+# 2. zsh Check (the shell the terminal runs)
+if [ ! -x /bin/zsh ]; then
+    echo -e "${RED}❌ Error: /bin/zsh not found.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Shell: zsh found.${NC}"
+
+# 3. Compiler Check (node-pty is a native module built on npm install)
 if ! command -v g++ &>/dev/null; then
     echo -e "${RED}❌ Error: g++ (Compiler) not found. Please install Xcode Command Line Tools.${NC}"
     exit 1
 fi
-
-# 3. C++17 Support Check
-# Try to compile a tiny snippet to see if the compiler likes C++17
-echo "int main(){}" | g++ -std=c++17 -x c++ -o /dev/null - &>/dev/null
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Error: Your compiler does not support C++17 standard.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Compiler: g++ supports C++17.${NC}"
+echo -e "${GREEN}✅ Compiler: g++ found.${NC}"
 
 # 4. Node.js & npm Check
 if ! command -v node &>/dev/null; then
@@ -41,13 +39,18 @@ if ! command -v node &>/dev/null; then
 fi
 
 # 5. Architecture Check (Intel vs Apple Silicon)
-# Useful if your C++ code has specific assembly or optimization flags
+# node-pty is compiled for this architecture
 ARCH=$(uname -m)
 echo -e "ℹ️  Architecture detected: $ARCH"
 
-# 6. Check for Make
+# 6. Build tools for node-pty (node-gyp needs make + python3)
 if ! command -v make &>/dev/null; then
     echo -e "${RED}❌ Error: 'make' utility not found.${NC}"
+    exit 1
+fi
+
+if ! command -v python3 &>/dev/null; then
+    echo -e "${RED}❌ Error: python3 not found (needed by node-gyp).${NC}"
     exit 1
 fi
 
