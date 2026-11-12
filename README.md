@@ -10,17 +10,18 @@
 </div> -->
 
 <div align="center">
-<img width="100"  alt="image" src="/Users/jeremyquek/Desktop/shell/pseudo_terminal/icon/icon.png
-" />
+<img width="100" alt="Neo Shell icon" src="pseudo_terminal/icon/icon.png" />
 </div>
 
 <div align=center>
   <img width="850"  alt="Screenshot 2026-02-23 at 4 11 37 PM" src="https://github.com/user-attachments/assets/6eb97f71-d09e-4eef-b959-6a774c10e5ce" />
 </div>
 
-A shell design inspired from CS 162. Implements REPL architecture "Read-Eval-Print Loop" and Unix standards according to Bash and Zsh. 
+This started out as a way to build my own shell. A shell design inspired from CS 162. Implements REPL architecture "Read-Eval-Print Loop" and Unix standards according to Bash and Zsh. That shell (NASH) still lives in `src/shell`.
 
 Obviously, this isn't the most pristine piece of code I've written, and I learned that there's insanely more depth and complexity to a shell engine than I can imagine. But at least I enjoyed doing it, learned alot about TTYs, pipes & fds and it works (🙏 on my hardware).
+
+From there I pivoted into building a polished terminal app instead, running zsh behind a pseudo-terminal (`/dev/pty`). That's Neo Shell.
 
 ## Neo Shell
 
