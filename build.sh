@@ -7,7 +7,7 @@ if ! command -v swift &>/dev/null; then
     exit 1
 fi
 
-cd "$(dirname "$0")/pseudo_terminal" || exit
+cd "$(dirname "$0")/terminal_app" || exit
 
 # Regenerate the app icon whenever icon.svg is newer than icon.icns.
 # Quick Look renders the SVG (no extra tools needed), sips makes each size

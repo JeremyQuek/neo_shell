@@ -10,7 +10,7 @@
 </div> -->
 
 <div align="center">
-<img width="100" alt="Neo Shell icon" src="pseudo_terminal/icon/icon.png" />
+<img width="100" alt="Neo Shell icon" src="terminal_app/icon/icon.png" />
 </div>
 
 <div align=center>
@@ -19,11 +19,11 @@
 
 ### How it started
 
-This started out as a way to build my own shell. A shell design inspired from CS 162. Implements REPL architecture "Read-Eval-Print Loop" and Unix standards according to Bash and Zsh. That shell (NASH) still lives in `src/shell`.
+I wanted to build my own shell, inspired from UCB's CS162 (Operating Sys) Course.
 
-Obviously, this isn't the most pristine piece of code I've written, and I learned that there's insanely more depth and complexity to a shell engine than I can imagine. But at least I enjoyed doing it, learned alot about TTYs, pipes & fds and it works (🙏 on my hardware).
+I learned that there's insanely more depth and complexity to a shell engine than I can imagine. But at least I enjoyed doing it, learned alot about TTYs, pipes fds (Shell code in `/shell`).
 
-From there I pivoted into building a polished terminal app instead, running zsh behind a pseudo-terminal (`/dev/pty`). That's Neo Shell.
+From there I pivoted into building a polished terminal app instead (`/terminal_app`), running zsh behind a pseudo-terminal (`/dev/pty`). 
 
 ## Neo Shell
 
@@ -40,7 +40,7 @@ Needs macOS 14+ and the Xcode Command Line Tools (`xcode-select --install`).
 ```bash
 bash precheck.sh     # check the tools are installed
 ./run.sh             # debug build, launched straight from source
-./build.sh --open    # release build → pseudo_terminal/build/neo_shell.app
+./build.sh --open    # release build → terminal_app/build/neo_shell.app
 ```
 
 The first build downloads and compiles SwiftTerm, which takes about a minute.

@@ -1,6 +1,6 @@
 # --- C++ Artifacts ---
 # Compiled Binaries
-src/shell/shell
+shell/shell/shell
 *.out
 *.app
 
@@ -17,8 +17,8 @@ src/shell/shell
 .DS_Store
 
 # --- Neo Shell app (Swift) ---
-pseudo_terminal/.build/
-pseudo_terminal/build/
+terminal_app/.build/
+terminal_app/build/
 
 # Logs
 *.log

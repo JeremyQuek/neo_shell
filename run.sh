@@ -13,7 +13,7 @@ if [ ! -x /bin/zsh ]; then
 fi
 
 # First run fetches SwiftTerm and compiles it (~1 min); later runs are quick
-cd "$(dirname "$0")/pseudo_terminal" || exit
+cd "$(dirname "$0")/terminal_app" || exit
 swift build || exit 1
 echo "Spawning Neo Shell..."
 "$(swift build --show-bin-path)/neo_shell" &
