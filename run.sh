@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Runs NASH straight from source (debug build, no .app). Use build.sh for the app.
+# Runs Neo Shell straight from source (debug build, no .app). Use build.sh for the app.
 
 if ! command -v swift &>/dev/null; then
     echo "Error: Swift is not installed. Run: xcode-select --install"
@@ -15,5 +15,5 @@ fi
 # First run fetches SwiftTerm and compiles it (~1 min); later runs are quick
 cd "$(dirname "$0")/pseudo_terminal" || exit
 swift build || exit 1
-echo "Spawning NASH terminal..."
-"$(swift build --show-bin-path)/MatrixTerm" &
+echo "Spawning Neo Shell..."
+"$(swift build --show-bin-path)/neo_shell" &

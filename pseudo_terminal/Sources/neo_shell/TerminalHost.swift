@@ -25,7 +25,7 @@ final class TerminalHost: LocalProcessTerminalView {
     func start() {
         let user = (ProcessInfo.processInfo.environment["USER"] ?? NSUserName()).uppercased()
         // Banner first, so zsh's first prompt lands underneath it
-        feed(text: "< NASH UPLINK ESTABLISHED >\r\nWAKE UP....\(user)\r\n\r\n")
+        feed(text: "< NEO SHELL UPLINK ESTABLISHED >\r\nWAKE UP....\(user)\r\n\r\n")
 
         startProcess(executable: Config.shell, args: ["-l"],
                      environment: Self.environment(),
@@ -38,7 +38,7 @@ final class TerminalHost: LocalProcessTerminalView {
         env["COLORTERM"] = "truecolor"
         // Don't inherit Terminal.app's identity, or /etc/zshrc_Apple_Terminal
         // redirects history into per-session files under ZDOTDIR
-        env["TERM_PROGRAM"] = "NASH"
+        env["TERM_PROGRAM"] = "neo_shell"
         env["SHELL_SESSIONS_DISABLE"] = "1"
         env.removeValue(forKey: "TERM_SESSION_ID")
         // Started from Finder there's no locale, and zsh would then treat
@@ -49,7 +49,7 @@ final class TerminalHost: LocalProcessTerminalView {
     }
 }
 
-// NASH-only zsh rc files. zsh reads these from ZDOTDIR instead of ~/.z*; each
+// Neo Shell-only zsh rc files. zsh reads these from ZDOTDIR instead of ~/.z*; each
 // loads the real file from $HOME first, so nothing in $HOME is modified.
 enum ZshTheme {
     private static let files: [(String, String)] = [
@@ -67,7 +67,7 @@ enum ZshTheme {
 
             [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
 
-            # --- NASH overrides: everything green ---
+            # --- Neo Shell overrides: everything green ---
             PROMPT='%B%F{green}%n%f%b %F{22}❯%f %F{green}%1~%f %B%F{green}❯%f%b '
             RPROMPT='%F{22}%*%f'
 
@@ -89,7 +89,7 @@ enum ZshTheme {
     static func install() -> String? {
         let fm = FileManager.default
         guard let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = support.appendingPathComponent("com.jeremyquek.matrixterm/zsh")
+        let dir = support.appendingPathComponent("com.jeremyquek.neoshell/zsh")
         do {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
             for (name, body) in files {

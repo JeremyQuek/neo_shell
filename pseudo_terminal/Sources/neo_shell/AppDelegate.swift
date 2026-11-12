@@ -11,11 +11,11 @@ final class TerminalWindow: NSWindow, NSWindowDelegate, LocalProcessTerminalView
         terminal = TerminalHost(frame: frame.insetBy(dx: Config.margin, dy: Config.margin))
         super.init(contentRect: frame, styleMask: [.titled, .closable, .miniaturizable, .resizable],
                    backing: .buffered, defer: false)
-        title = "NASH"
+        title = "Neo Shell"
         backgroundColor = .black
         isReleasedWhenClosed = false
         // Same identifier on every window, so macOS can group them as tabs
-        tabbingIdentifier = "nash"
+        tabbingIdentifier = "neo_shell"
         delegate = self
 
         let content = ClickToFocusView(frame: frame)
@@ -108,14 +108,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return item
         }
 
-        _ = submenu("NASH", [
-            item("About NASH", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""),
+        _ = submenu("Neo Shell", [
+            item("About Neo Shell", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""),
             .separator(),
-            item("Hide NASH", #selector(NSApplication.hide(_:)), "h"),
+            item("Hide Neo Shell", #selector(NSApplication.hide(_:)), "h"),
             item("Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]),
             item("Show All", #selector(NSApplication.unhideAllApplications(_:)), ""),
             .separator(),
-            item("Quit NASH", #selector(NSApplication.terminate(_:)), "q"),
+            item("Quit Neo Shell", #selector(NSApplication.terminate(_:)), "q"),
         ])
         _ = submenu("Shell", [
             item("New Window", #selector(newWindow(_:)), "n"),

@@ -5,7 +5,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-echo "🔍 Starting system compatibility check for NASH..."
+echo "🔍 Starting system compatibility check for Neo Shell..."
 
 # 1. Architecture/OS Check (Enforce macOS)
 OS_TYPE=$(uname)

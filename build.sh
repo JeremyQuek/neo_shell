@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Builds NASH.app (Swift + Metal). Usage: ./build.sh [--open]
+# Builds neo_shell.app (Swift + Metal). Usage: ./build.sh [--open]
 
 if ! command -v swift &>/dev/null; then
     echo "Error: Swift is not installed. Run: xcode-select --install"
@@ -9,16 +9,16 @@ fi
 
 cd "$(dirname "$0")/pseudo_terminal" || exit
 
-echo "Building NASH.app..."
+echo "Building neo_shell.app..."
 swift build -c release || exit 1
 
 # A .app is just a folder: the binary, an Info.plist and the icon. It's put
 # together and signed outside the project, because iCloud keeps tagging
 # folders on the Desktop with Finder metadata that codesign won't sign over.
 STAGE="$(mktemp -d)"
-STAGED="$STAGE/NASH.app"
+STAGED="$STAGE/neo_shell.app"
 mkdir -p "$STAGED/Contents/MacOS" "$STAGED/Contents/Resources"
-cp "$(swift build -c release --show-bin-path)/MatrixTerm" "$STAGED/Contents/MacOS/"
+cp "$(swift build -c release --show-bin-path)/neo_shell" "$STAGED/Contents/MacOS/"
 cp icon/icon.icns "$STAGED/Contents/Resources/"
 
 cat > "$STAGED/Contents/Info.plist" <<PLIST
@@ -26,10 +26,10 @@ cat > "$STAGED/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>NASH</string>
-    <key>CFBundleDisplayName</key><string>NASH</string>
-    <key>CFBundleExecutable</key><string>MatrixTerm</string>
-    <key>CFBundleIdentifier</key><string>com.jeremyquek.matrixterm</string>
+    <key>CFBundleName</key><string>Neo Shell</string>
+    <key>CFBundleDisplayName</key><string>Neo Shell</string>
+    <key>CFBundleExecutable</key><string>neo_shell</string>
+    <key>CFBundleIdentifier</key><string>com.jeremyquek.neoshell</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.0.0</string>
     <key>CFBundleVersion</key><string>1</string>
@@ -45,7 +45,7 @@ PLIST
 xattr -cr "$STAGED"
 codesign --force --sign - "$STAGED" || exit 1
 
-APP="$PWD/build/NASH.app"
+APP="$PWD/build/neo_shell.app"
 rm -rf "$APP"
 mkdir -p build
 ditto "$STAGED" "$APP"
@@ -54,7 +54,7 @@ rm -rf "$STAGE"
 echo ""
 echo "Built: $APP"
 
-# -n: start a fresh copy even if NASH is already running (plain `open`
+# -n: start a fresh copy even if Neo Shell is already running (plain `open`
 # would just bring the old, already-running version to the front)
 if [ "$1" = "--open" ]; then
     open -n "$APP"

@@ -1,7 +1,7 @@
 import AppKit
 
 // Every tunable in one place. Values carried over from the old Tauri
-// build, so NASH looks the same as before.
+// build, so Neo Shell looks the same as before.
 enum Config {
     // --- Rain ---
     static let rainFPS = 30

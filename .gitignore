@@ -16,7 +16,7 @@ src/shell/shell
 .idea/
 .DS_Store
 
-# --- NASH app (Swift) ---
+# --- Neo Shell app (Swift) ---
 pseudo_terminal/.build/
 pseudo_terminal/build/
 
