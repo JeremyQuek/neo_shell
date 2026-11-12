@@ -18,6 +18,13 @@ final class TerminalHost: LocalProcessTerminalView {
                   green: UInt16(hex >> 8 & 0xFF) * 257,
                   blue: UInt16(hex & 0xFF) * 257)
         })
+        // SwiftTerm's scroll bar shows as a grey strip over the clear
+        // background. Trackpad and wheel scrolling don't need it, and
+        // re-applying the size hands its width back to the text.
+        for case let scroller as NSScroller in subviews {
+            scroller.isHidden = true
+        }
+        setFrameSize(frame.size)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }

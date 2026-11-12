@@ -38,7 +38,7 @@ final class RainRenderer {
     }
 }
 
-// The rain layer. Redraws at most 30 times a second, and only while its
+// The rain layer. Redraws Config.rainFPS times a second, and only while its
 // window is focused and on screen; otherwise it holds its last frame.
 final class RainView: MTKView, MTKViewDelegate {
     private let renderer = RainRenderer.shared

@@ -4,7 +4,7 @@ import AppKit
 // build, so Neo Shell looks the same as before.
 enum Config {
     // --- Rain ---
-    static let rainFPS = 30
+    static let rainFPS = 24
     static let rainGlyphs = Array("ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ1234567890")
     static let rainFont = NSFont(name: "Arial", size: 16) ?? .systemFont(ofSize: 16)
     static let rainCell = CGSize(width: 16, height: 16)   // points

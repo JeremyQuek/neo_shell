@@ -2,7 +2,7 @@
 // `swift build` doesn't compile .metal files into a library.
 //
 // The grid never moves. Every column has a drop falling one row per step
-// (30 steps/s); a cell's brightness is fade^(steps since the drop passed it),
+// (Config.rainFPS steps/s); a cell's brightness is fade^(steps since the drop passed it),
 // and its glyph is picked by hashing the step it was lit at, so each pass
 // leaves new letters behind. All of it is a pure function of the step
 // counter: the CPU sends one number per frame.
