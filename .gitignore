@@ -45,3 +45,7 @@ out/
 pseudo_terminal/main/target/
 pseudo_terminal/main/gen/
 pseudo_terminal/ui/vendor/
+
+# --- MatrixTerm (Swift) ---
+MatrixTerm/.build/
+MatrixTerm/build/
