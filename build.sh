@@ -9,6 +9,27 @@ fi
 
 cd "$(dirname "$0")/pseudo_terminal" || exit
 
+# Regenerate the app icon whenever icon.svg is newer than icon.icns.
+# Quick Look renders the SVG (no extra tools needed), sips makes each size
+# macOS wants, and iconutil packs them into the .icns.
+if [ icon/icon.svg -nt icon/icon.icns ]; then
+    echo "Regenerating icon.icns from icon.svg..."
+    ICONS="$(mktemp -d)"
+    qlmanage -t -s 1024 -o "$ICONS" icon/icon.svg >/dev/null 2>&1
+    if [ ! -f "$ICONS/icon.svg.png" ]; then
+        echo "Error: couldn't render icon/icon.svg"
+        exit 1
+    fi
+    SET="$ICONS/icon.iconset"
+    mkdir -p "$SET"
+    for size in 16 32 128 256 512; do
+        sips -z $size $size "$ICONS/icon.svg.png" --out "$SET/icon_${size}x${size}.png" >/dev/null
+        sips -z $((size * 2)) $((size * 2)) "$ICONS/icon.svg.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null
+    done
+    iconutil -c icns "$SET" -o icon/icon.icns || exit 1
+    rm -rf "$ICONS"
+fi
+
 echo "Building neo_shell.app..."
 swift build -c release || exit 1
 
