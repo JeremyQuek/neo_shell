@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# Pre-check dependencies
-if ! command -v npm &>/dev/null; then
-    echo "Error: npm is not installed."
-    exit 1
-fi
+# Runs NASH straight from source (debug build, no .app). Use build.sh for the app.
 
-if ! command -v cargo &>/dev/null; then
-    echo "Error: Rust (cargo) is not installed. Get it from https://rustup.rs"
+if ! command -v swift &>/dev/null; then
+    echo "Error: Swift is not installed. Run: xcode-select --install"
     exit 1
 fi
 
@@ -16,9 +12,8 @@ if [ ! -x /bin/zsh ]; then
     exit 1
 fi
 
-
-# npm i (xterm.js + Tauri CLI) && start; first run compiles the Rust side
-cd ./pseudo_terminal || exit
-npm i -s
+# First run fetches SwiftTerm and compiles it (~1 min); later runs are quick
+cd "$(dirname "$0")/pseudo_terminal" || exit
+swift build || exit 1
 echo "Spawning NASH terminal..."
-npm start & cd ../
+"$(swift build --show-bin-path)/MatrixTerm" &

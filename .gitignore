@@ -16,36 +16,13 @@ src/shell/shell
 .idea/
 .DS_Store
 
-# --- Node.js / Electron Artifacts ---
-# Dependency directory
-node_modules/
-jspm_packages/
+# --- NASH app (Swift) ---
+pseudo_terminal/.build/
+pseudo_terminal/build/
 
 # Logs
-logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Electron distribution folders
-dist/
-out/
-
 
 # Env files (for API keys/secrets)
 .env
 .env.local
-
-# Dependency locks (Optional: some prefer to keep these)
-# package-lock.json
-# yarn.lock
-
-# --- Tauri ---
-pseudo_terminal/main/target/
-pseudo_terminal/main/gen/
-pseudo_terminal/ui/vendor/
-
-# --- MatrixTerm (Swift) ---
-MatrixTerm/.build/
-MatrixTerm/build/

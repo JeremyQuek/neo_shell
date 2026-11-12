@@ -1,7 +1,7 @@
 import AppKit
 
-// Every tunable in one place. Values match the Tauri build (ui/index.html)
-// so both apps look the same.
+// Every tunable in one place. Values carried over from the old Tauri
+// build, so NASH looks the same as before.
 enum Config {
     // --- Rain ---
     static let rainFPS = 30
