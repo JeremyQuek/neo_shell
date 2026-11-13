@@ -10,24 +10,31 @@ fi
 cd "$(dirname "$0")/terminal_app" || exit
 
 # Regenerate the app icon whenever icon.svg is newer than icon.icns.
-# Quick Look renders the SVG (no extra tools needed), sips makes each size
-# macOS wants, and iconutil packs them into the .icns.
+# Inkscape (which the SVG was made in) renders it; Quick Look and WebKit
+# both mangle its shapes. sips makes each size macOS wants, and iconutil
+# packs them into the .icns. Without Inkscape the current icon is kept.
+INKSCAPE=/Applications/Inkscape.app/Contents/MacOS/inkscape
 if [ icon/icon.svg -nt icon/icon.icns ]; then
-    echo "Regenerating icon.icns from icon.svg..."
-    ICONS="$(mktemp -d)"
-    qlmanage -t -s 1024 -o "$ICONS" icon/icon.svg >/dev/null 2>&1
-    if [ ! -f "$ICONS/icon.svg.png" ]; then
-        echo "Error: couldn't render icon/icon.svg"
-        exit 1
+    if [ ! -x "$INKSCAPE" ]; then
+        echo "Warning: icon.svg changed but Inkscape isn't installed; keeping the old icon."
+    else
+        echo "Regenerating icon.icns from icon.svg..."
+        ICONS="$(mktemp -d)"
+        "$INKSCAPE" icon/icon.svg --export-type=png --export-area-page --export-width=1024 \
+            --export-filename="$ICONS/icon.png" 2>/dev/null
+        if [ ! -f "$ICONS/icon.png" ]; then
+            echo "Error: couldn't render icon/icon.svg"
+            exit 1
+        fi
+        SET="$ICONS/icon.iconset"
+        mkdir -p "$SET"
+        for size in 16 32 128 256 512; do
+            sips -z $size $size "$ICONS/icon.png" --out "$SET/icon_${size}x${size}.png" >/dev/null
+            sips -z $((size * 2)) $((size * 2)) "$ICONS/icon.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null
+        done
+        iconutil -c icns "$SET" -o icon/icon.icns || exit 1
+        rm -rf "$ICONS"
     fi
-    SET="$ICONS/icon.iconset"
-    mkdir -p "$SET"
-    for size in 16 32 128 256 512; do
-        sips -z $size $size "$ICONS/icon.svg.png" --out "$SET/icon_${size}x${size}.png" >/dev/null
-        sips -z $((size * 2)) $((size * 2)) "$ICONS/icon.svg.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null
-    done
-    iconutil -c icns "$SET" -o icon/icon.icns || exit 1
-    rm -rf "$ICONS"
 fi
 
 echo "Building neo_shell.app..."

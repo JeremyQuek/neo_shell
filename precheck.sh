@@ -36,4 +36,11 @@ if ! command -v swift &>/dev/null; then
 fi
 echo -e "${GREEN}✅ Swift: $(swift --version 2>&1 | head -1) found.${NC}"
 
+# 5. Inkscape (optional: only needed to rebuild the app icon after editing icon.svg)
+if [ -x /Applications/Inkscape.app/Contents/MacOS/inkscape ]; then
+    echo -e "${GREEN}✅ Inkscape found (icon.svg changes will regenerate the app icon).${NC}"
+else
+    echo -e "⚠️  Inkscape not found. Optional: the app builds, but edits to icon.svg won't update the icon."
+fi
+
 echo -e "\n${GREEN}🚀 All systems go! You are ready to run run.sh or build.sh.${NC}"
